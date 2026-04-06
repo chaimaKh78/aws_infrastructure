@@ -1,143 +1,108 @@
-# AWS Infrastructure Automation (Terraform)
+# AWS Infrastructure with Terraform
 
-Automated production‑ready AWS infrastructure built with Terraform, including secure networking, autoscaling EC2 deployment, Application Load Balancer (ALB), and automated snapshot cleanup using AWS Lambda. This repository demonstrates real‑world DevOps practices and infrastructure automation.
-
----
-
-## 🧠 Project Summary
-
-This repository showcases an end‑to‑end AWS infrastructure setup using Infrastructure as Code (IaC).  
-It includes:
-
-- **Modular Terraform configuration** to provision AWS resources
-- **Secure and scalable architecture** with VPC, subnets, security groups
-- **Load balanced compute layer** using EC2 behind an ALB
-- **Automation** with Lambda function for cleanup of unused snapshots
-- Separation of infrastructure concerns for clarity and reusability
-
-This project acts as a **professional-level DevOps portfolio piece** to demonstrate cloud engineering capabilities.
+This project provides a production-ready AWS infrastructure fully automated using Terraform. The infrastructure includes a secure network setup, EC2 instances, an Application Load Balancer (ALB), and a Lambda function that automates cleanup of unused EBS snapshots.
 
 ---
 
-## 🏗️ Architecture Overview
+## 📦 Project Modules Overview
 
-Below is a simplified visual of how components relate:
+### 1. `network/`
 
-```text id="aws_arch"
-                   ┌───────────────┐
-                   │   AWS VPC     │
-                   │ (networking)  │
-                   └───────┬───────┘
-                           │
-              ┌────────────┼───────────────┐
-              ▼            ▼               ▼
-        Public Subnets  Private Subnets   Lambda (Snapshot Cleaner)
-            (ALB)           (EC2)                  |
-              │               │                     |
-              └────┬──────────┴──────────┬──────────┘
-                   │                     │
-                  ALB           [Auto Scaling EC2 Fleet]
----
+**Purpose:** Create the VPC, subnets, and networking foundation.
 
-## 📌 Key Features
+**Includes:**
 
-* **Infrastructure Provisioning:** Create AWS network, compute, and load balancer resources using Terraform with reusable modules.
-* **Security:** Infrastructure setup follows secure design (private EC2 subnets + controlled security groups).
-* **Automation:** Lambda function automatically cleans up outdated EBS snapshots to reduce cost.
-* **Modularity:** Code organized into network, security, compute, and automation modules for easier collaboration and reuse.
-* **Production‑ready:** Designed with separation of concerns suitable for staging/production environments.
+* VPC with CIDR block from variables
+* Public and private subnets
+* Route tables and internet gateway (for public subnets)
+
+**Advantages:**
+
+* Clearly separated network logic
+* Scalable subnet configuration
+* Suitable for multi-AZ deployments
 
 ---
 
-## 🛠️ Tech Stack
+### 2. `security/`
 
-| Category               | Tools                         |
-| ---------------------- | ----------------------------- |
-| Infrastructure as Code | Terraform                     |
-| Cloud Provider         | Amazon Web Services           |
-| Automation             | AWS Lambda                    |
-| Load Balancing         | AWS Application Load Balancer |
-| Security               | VPC, Security Groups          |
+**Purpose:** Manage security groups and network ACLs.
 
-*(Add AWS resource ARN examples or outputs if available.)*
+**Includes:**
 
----
+* Public security group for ALB (allow HTTP from 0.0.0.0/0)
+* Private security group for EC2 (allow only from ALB SG)
+* Optional NACLs for public/private subnets
 
-## 📋 Modules Breakdown
+**Advantages:**
 
-**1. `network/`** — Virtual Private Cloud (VPC) with public and private subnets
-**2. `security/`** — Security group rules and network ACLs
-**3. `ec2/`** — Provision EC2 instances in private subnets
-**4. `loadbalancer/`** — Public ALB and target groups
-**5. `lambda_snapshot_cleaner/`** — Automated cleanup of unused EBS snapshots using Lambda and EventBridge rule
-
-Each module encapsulates a distinct part of the infrastructure for modular reuse and clarity.
+* Secure EC2 instances (no direct public access)
+* Centralized security logic
+* Easy to audit and update
 
 ---
 
-## 📥 How to Deploy
+### 3. `ec2/`
 
-### Prerequisites
+**Purpose:** Deploy EC2 instances into private subnets.
 
-* AWS CLI configured with proper credentials
-* Terraform installed (v1.x+)
-* Access to an AWS account with necessary permissions
+**Includes:**
 
-### Deployment Steps
+* Variable instance count
+* AMI and instance type configurable
+* Instances deployed in private subnets with a private SG
+* Root EBS volumes tagged with `BackupPolicy = daily`
 
-1. Clone the repository:
+**Advantages:**
 
-```bash
-git clone https://github.com/chaimaKh78/aws_infrastructure.git
-cd aws_infrastructure
-```
-
-2. Initialize Terraform:
-
-```bash
-terraform init
-```
-
-3. Review the execution plan:
-
-```bash
-terraform plan
-```
-
-4. Apply infrastructure changes:
-
-```bash
-terraform apply
-```
-
-5. Validate deployed resources in AWS Console / via CLI.
+* EC2s isolated in private network
+* Easy to scale horizontally
+* Ready for use with ALB and backup automation
 
 ---
 
+### 4. `loadbalancer/`
 
-## 🚀 Learning Outcomes
+**Purpose:** Deploy a public-facing Application Load Balancer (ALB).
 
-This project demonstrates:
+**Includes:**
 
-* Real‑world AWS IaC using Terraform
-* Modular infrastructure design for production
-* Cloud automation with Lambda functions
-* Best practices in secure networking and load balancing
+* ALB in public subnets
+* Listener on port 80 (HTTP)
+* Target Group
+* EC2 instances automatically registered using `for_each`
 
----
+**Advantages:**
 
-## 🏷️ GitHub Topics
-
-```
-aws, terraform, devops, infrastructure-as-code, cloud-engineering, automation
-```
-
----
-
-## 📌 Notes
-
-This repository simulates **production‑like infrastructure work** and is a portfolio piece suitable for cloud engineering, DevOps, and SRE roles.
+* Public entry point to internal EC2 apps
+* Load-balanced traffic
+* Decouples traffic from compute resources
 
 ---
 
+### 5. `lambda_snapshot_cleaner/`
 
+**Purpose:** Automate the cleanup of unused EBS snapshots.
+
+**Includes:**
+
+* Lambda function in Python
+* IAM role with snapshot deletion permissions
+* CloudWatch EventBridge rule (daily)
+* Python logic: delete old snapshots (age > 7 days) not used by any EC2 volume and tagged `BackupPolicy = daily`
+
+**Advantages:**
+
+* Reduces storage cost
+* Ensures clean snapshot lifecycle
+* Fully automated, production-friendly solution
+
+---
+
+## ✅ Features
+
+* Modular Terraform code
+* Secure and scalable AWS architecture
+* Clean separation of public and private layers
+* Automated backup cleanup with Lambda
+* Easy to adapt and extend
